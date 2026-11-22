@@ -1,0 +1,9 @@
+.local/
+AGENTS.md
+*.o
+client/t3board
+client/t3board-kindle
+client/font_atlas.h
+*.pgm
+*.png
+node_modules/

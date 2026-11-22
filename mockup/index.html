@@ -1,0 +1,1121 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Kindle Touch D01200 — T3 Code Board Mockup</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; }
+
+  body {
+    margin: 0;
+    padding: 0;
+    font-family: var(--font-sans, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif);
+    color: var(--foreground, #e5e5e5);
+  }
+
+  .sim-wrap {
+    width: 100%;
+    max-width: 712px;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  /* Compact simulator control strip using T3 theme tokens */
+  .sim-controls {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    padding: 8px 12px;
+    background: var(--card, rgba(255,255,255,0.04));
+    border: 1px solid var(--border, rgba(255,255,255,0.12));
+    border-radius: var(--radius, 8px);
+    font-size: 12px;
+  }
+
+  .sim-group {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    flex-wrap: wrap;
+  }
+
+  .sim-label {
+    color: var(--muted-foreground, #999);
+    font-size: 11px;
+    font-family: var(--font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+  }
+
+  .sim-btn {
+    appearance: none;
+    border: 1px solid var(--border, rgba(255,255,255,0.16));
+    background: var(--secondary, rgba(255,255,255,0.06));
+    color: var(--foreground, #eee);
+    border-radius: calc(var(--radius, 8px) - 2px);
+    padding: 4px 9px;
+    font-size: 11.5px;
+    font-family: var(--font-sans, inherit);
+    cursor: pointer;
+    transition: opacity 0.12s ease, background 0.12s ease;
+  }
+
+  .sim-btn:hover { opacity: 0.88; }
+
+  .sim-btn.active {
+    background: var(--primary, #fff);
+    color: var(--primary-foreground, #111);
+    border-color: var(--primary, #fff);
+    font-weight: 600;
+  }
+
+  .sim-meta {
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 11px;
+    color: var(--muted-foreground, #999);
+  }
+
+  /* Physical Kindle Touch D01200 landscape bezel */
+  .bezel {
+    width: 100%;
+    background: #d8d7d2;
+    border-radius: 18px;
+    padding: 18px 22px 18px 22px;
+    box-shadow:
+      0 10px 28px rgba(0,0,0,0.32),
+      inset 0 1px 0 rgba(255,255,255,0.65),
+      inset 0 -2px 4px rgba(0,0,0,0.14);
+    border: 1px solid rgba(0,0,0,0.22);
+    position: relative;
+  }
+
+  /* Recessed e-ink viewport container — exact 800x600 (4:3) logical canvas scaled smoothly */
+  .screen-recess {
+    width: 100%;
+    aspect-ratio: 800 / 600;
+    border-radius: 4px;
+    overflow: hidden;
+    position: relative;
+    background: #e4e3dc;
+    box-shadow:
+      inset 0 2px 5px rgba(0,0,0,0.34),
+      inset 0 0 0 1px rgba(0,0,0,0.28);
+  }
+
+  /* Logical 800x600 surface scaled via JS transform so typography matches real 800x600 pixels */
+  .eink-canvas {
+    width: 800px;
+    height: 600px;
+    transform-origin: top left;
+    background: #e4e3dc;
+    color: #161614;
+    font-family: ui-monospace, "SFMono-Regular", Menlo, Monaco, Consolas, monospace;
+    display: flex;
+    flex-direction: column;
+    padding: 20px 26px 16px 26px;
+    position: relative;
+    user-select: none;
+    -webkit-font-smoothing: antialiased;
+    /* Subtle e-ink micro-paper texture */
+    background-image: radial-gradient(rgba(0,0,0,0.025) 1px, transparent 0);
+    background-size: 4px 4px;
+  }
+
+  /* E-ink refresh flash overlays */
+  .eink-flash-full {
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    opacity: 0;
+    z-index: 40;
+  }
+
+  @keyframes gc16Flash {
+    0%   { opacity: 0; background: #141413; }
+    22%  { opacity: 0.92; background: #141413; }
+    52%  { opacity: 0.85; background: #f2f1eb; }
+    100% { opacity: 0; background: transparent; }
+  }
+
+  @keyframes duPartial {
+    0%   { opacity: 0.35; background: #141413; }
+    55%  { opacity: 0.12; background: #e4e3dc; }
+    100% { opacity: 0; background: transparent; }
+  }
+
+  .eink-flash-full.anim-gc16 {
+    animation: gc16Flash 340ms steps(4) forwards;
+  }
+
+  .eink-flash-full.anim-du {
+    animation: duPartial 150ms steps(2) forwards;
+  }
+
+  /* Top Header */
+  .ek-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-bottom: 10px;
+    border-bottom: 3px solid #181816;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    text-transform: uppercase;
+  }
+
+  .ek-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+  }
+
+  .ek-header-right {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    font-weight: 600;
+    color: #2b2b28;
+  }
+
+  /* Hero Summary Band (Overview) */
+  .ek-hero {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    padding: 14px 0 14px 0;
+    border-bottom: 2px solid #2a2a27;
+  }
+
+  .ek-hero-left {
+    display: flex;
+    align-items: baseline;
+    gap: 16px;
+  }
+
+  .ek-big-num {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-size: 74px;
+    font-weight: 800;
+    line-height: 0.86;
+    letter-spacing: -0.04em;
+    color: #141412;
+  }
+
+  .ek-big-copy {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+  }
+
+  .ek-big-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-size: 21px;
+    font-weight: 700;
+    line-height: 1.15;
+    color: #181816;
+  }
+
+  .ek-big-sub {
+    font-size: 13px;
+    color: #4a4a44;
+    letter-spacing: 0.02em;
+  }
+
+  .ek-hero-stats {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    font-size: 13px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #242421;
+  }
+
+  .ek-hero-hint {
+    font-size: 11px;
+    color: #54544e;
+    letter-spacing: 0.05em;
+  }
+
+  /* Overview Rows — generous >= 68px touch targets for IR touch */
+  .ek-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ek-row {
+    display: grid;
+    grid-template-columns: 56px 175px 1fr 122px;
+    align-items: center;
+    gap: 14px;
+    padding: 12px 6px;
+    min-height: 74px;
+    border-bottom: 1px solid #6e6e67;
+    cursor: pointer;
+    transition: background 0.06s linear;
+  }
+
+  .ek-row:last-child {
+    border-bottom: 2px solid #181816;
+  }
+
+  .ek-row:hover {
+    background: rgba(20, 20, 18, 0.07);
+  }
+
+  .ek-row:active, .ek-row.tapped {
+    background: #181816;
+    color: #e4e3dc;
+  }
+
+  .ek-row:active .ek-badge, .ek-row.tapped .ek-badge {
+    background: #e4e3dc;
+    color: #181816;
+  }
+
+  .ek-row:active .ek-sub,
+  .ek-row:active .ek-pr-meta,
+  .ek-row:active .ek-right-sub,
+  .ek-row.tapped .ek-sub,
+  .ek-row.tapped .ek-pr-meta,
+  .ek-row.tapped .ek-right-sub {
+    color: #cfcec6;
+  }
+
+  .ek-badge {
+    width: 52px;
+    height: 44px;
+    background: #181816;
+    color: #e8e7e0;
+    border-radius: 5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-size: 22px;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    flex-shrink: 0;
+  }
+
+  .ek-col-proj {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .ek-proj-name {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ek-sub {
+    font-size: 12px;
+    color: #3d3d38;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ek-col-work {
+    display: flex;
+    flex-direction: column;
+    gap: 3px;
+    min-width: 0;
+  }
+
+  .ek-work-title {
+    font-size: 14px;
+    font-weight: 600;
+    line-height: 1.25;
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+
+  .ek-pr-tag {
+    display: inline-block;
+    border: 1.5px solid currentColor;
+    padding: 0 5px;
+    border-radius: 3px;
+    font-size: 11.5px;
+    font-weight: 700;
+    margin-right: 6px;
+    vertical-align: 1px;
+  }
+
+  .ek-pr-meta {
+    font-size: 11.5px;
+    color: #4a4a44;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ek-col-right {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    gap: 4px;
+    text-align: right;
+  }
+
+  .ek-status-pill {
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+  }
+
+  .ek-dot {
+    display: inline-block;
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    border: 1.5px solid currentColor;
+  }
+
+  .ek-dot.solid { background: currentColor; }
+  .ek-dot.half {
+    background: linear-gradient(90deg, currentColor 50%, transparent 50%);
+  }
+
+  .ek-right-sub {
+    font-size: 11.5px;
+    color: #464640;
+    font-weight: 600;
+  }
+
+  /* Project Drill-Down View */
+  .ek-back-btn {
+    appearance: none;
+    border: 2px solid #181816;
+    background: #181816;
+    color: #e8e7e0;
+    border-radius: 4px;
+    padding: 5px 12px;
+    font-family: inherit;
+    font-size: 13px;
+    font-weight: 700;
+    letter-spacing: 0.05em;
+    cursor: pointer;
+  }
+
+  .ek-back-btn:active {
+    background: #e4e3dc;
+    color: #181816;
+  }
+
+  .ek-detail-banner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 12px 0;
+    border-bottom: 2px solid #181816;
+  }
+
+  .ek-detail-title-wrap {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    min-width: 0;
+  }
+
+  .ek-detail-name {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-size: 24px;
+    font-weight: 800;
+    line-height: 1.1;
+  }
+
+  .ek-detail-repo {
+    font-size: 12px;
+    color: #4a4a44;
+    margin-top: 2px;
+  }
+
+  /* Detail tabs */
+  .ek-tabs {
+    display: flex;
+    gap: 8px;
+    flex-shrink: 0;
+  }
+
+  .ek-tab {
+    appearance: none;
+    border: 2px solid #181816;
+    background: transparent;
+    color: #181816;
+    border-radius: 4px;
+    padding: 7px 12px;
+    font-family: inherit;
+    font-size: 12px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    cursor: pointer;
+  }
+
+  .ek-tab.active {
+    background: #181816;
+    color: #e8e7e0;
+  }
+
+  /* Lead thread summary bar inside detail */
+  .ek-lead-card {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 10px 12px;
+    margin-top: 10px;
+    border: 1.5px solid #181816;
+    background: rgba(20, 20, 18, 0.055);
+    border-radius: 4px;
+  }
+
+  .ek-lead-label {
+    font-size: 10.5px;
+    font-weight: 700;
+    letter-spacing: 0.08em;
+    color: #464640;
+    text-transform: uppercase;
+  }
+
+  .ek-lead-title {
+    font-family: -apple-system, BlinkMacSystemFont, "Helvetica Neue", Arial, sans-serif;
+    font-size: 15px;
+    font-weight: 700;
+    margin-top: 2px;
+  }
+
+  .ek-lead-agent {
+    text-align: right;
+    flex-shrink: 0;
+  }
+
+  .ek-section-hdr {
+    display: flex;
+    justify-content: space-between;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.07em;
+    color: #45453f;
+    text-transform: uppercase;
+    padding: 11px 2px 6px 2px;
+    border-bottom: 1.5px solid #2b2b28;
+  }
+
+  .ek-sub-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+  }
+
+  .ek-sub-row {
+    display: grid;
+    grid-template-columns: 22px 1fr 148px 104px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid #8a8a82;
+    font-size: 13px;
+  }
+
+  .ek-sub-row:last-child {
+    border-bottom: none;
+  }
+
+  .ek-sub-task {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ek-sub-model {
+    font-size: 12px;
+    color: #363631;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .ek-sub-state {
+    text-align: right;
+    font-size: 11.5px;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+  }
+
+  .ek-pr-row {
+    display: grid;
+    grid-template-columns: 58px 1fr 110px 84px;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 4px;
+    border-bottom: 1px solid #8a8a82;
+    font-size: 13px;
+  }
+
+  .ek-pr-row:last-child { border-bottom: none; }
+
+  .ek-pr-num {
+    font-weight: 800;
+    font-size: 13.5px;
+  }
+
+  .ek-pr-state-pill {
+    display: inline-block;
+    border: 1.5px solid #181816;
+    border-radius: 3px;
+    padding: 1px 6px;
+    font-size: 10.5px;
+    font-weight: 700;
+    text-align: center;
+  }
+
+  .ek-pr-state-pill.open {
+    background: #181816;
+    color: #e8e7e0;
+  }
+
+  /* Quick switcher + footer */
+  .ek-footer {
+    margin-top: auto;
+    padding-top: 10px;
+    border-top: 2px solid #181816;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    font-size: 12px;
+    font-weight: 600;
+    letter-spacing: 0.04em;
+    color: #2c2c28;
+  }
+
+  .ek-footer-pills {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+  }
+
+  .ek-mini-pill {
+    appearance: none;
+    border: 1.5px solid #181816;
+    background: transparent;
+    color: #181816;
+    border-radius: 3px;
+    padding: 3px 8px;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .ek-mini-pill.active {
+    background: #181816;
+    color: #e8e7e0;
+  }
+
+  .ek-refresh-btn {
+    appearance: none;
+    border: 1.5px solid #44443e;
+    background: transparent;
+    color: #181816;
+    border-radius: 3px;
+    padding: 2px 8px;
+    font-family: inherit;
+    font-size: 11.5px;
+    font-weight: 700;
+    cursor: pointer;
+  }
+
+  .ek-refresh-btn:active {
+    background: #181816;
+    color: #e8e7e0;
+  }
+
+  /* Hardware home button mark on right bezel of landscape Kindle Touch */
+  .bezel-bottom-bar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-top: 8px;
+    padding: 0 4px;
+    color: #6b6a64;
+    font-family: -apple-system, BlinkMacSystemFont, sans-serif;
+    font-size: 11px;
+    letter-spacing: 0.14em;
+    font-weight: 600;
+  }
+
+  .bezel-led {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-family: var(--font-mono, monospace);
+    letter-spacing: 0.04em;
+    font-size: 10.5px;
+  }
+
+  .led-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: #4f9b57;
+    box-shadow: 0 0 4px rgba(79, 155, 87, 0.7);
+  }
+</style>
+</head>
+<body>
+<div class="sim-wrap">
+  <div class="sim-controls">
+    <div class="sim-group">
+      <span class="sim-label">Dataset</span>
+      <button class="sim-btn active" id="btn-live" onclick="setDataset('live')">Live Snapshot (2)</button>
+      <button class="sim-btn" id="btn-demo" onclick="setDataset('demo')">Busy Desk (4)</button>
+    </div>
+    <div class="sim-group">
+      <span class="sim-label">EPDC</span>
+      <button class="sim-btn active" id="btn-du" onclick="setRefreshMode('du')">DU Partial</button>
+      <button class="sim-btn" id="btn-gc16" onclick="setRefreshMode('gc16')">GC16 Full</button>
+    </div>
+    <span class="sim-meta" id="sim-status">800×600 · 16-gray · IR Touch</span>
+  </div>
+
+  <div class="bezel">
+    <div class="screen-recess" id="screen-recess">
+      <div class="eink-canvas" id="eink-canvas">
+        <div class="eink-flash-full" id="eink-flash"></div>
+        <div id="eink-root" style="display:flex;flex-direction:column;height:100%;"></div>
+      </div>
+    </div>
+    <div class="bezel-bottom-bar">
+      <span>kindle · D01200</span>
+      <span class="bezel-led"><span class="led-dot"></span>T3-OS · /dev/fb0 · evdev</span>
+    </div>
+  </div>
+</div>
+
+<script>
+const DATASETS = {
+  live: [
+    {
+      code: "S8",
+      name: "SM80InferrenceEngine",
+      repo: "SeriousRising/SM80InferrenceEngine",
+      leadThread: "Overnight Perf — Wave 2 (P9–P12) & Wave 3+",
+      leadAgent: "gemini-4-neon",
+      status: "running",
+      activeWork: "Unit P31: standalone --router-fused-align",
+      prBadge: "#70",
+      prSummary: "12 merged · P31 in review",
+      updatedAgo: "now",
+      subagents: [
+        { state: "running", task: "Review Unit P31 (--router-fused-align, R1)", agent: "gemini-4-neon", meta: "RUN · 1m" },
+        { state: "done",    task: "Implement Unit P31 (--router-fused-align)", agent: "gemini-4-neon", meta: "DONE · 2m" },
+        { state: "done",    task: "Review Unit P30 (Graphed MTP Drafter)", agent: "gemini-4-neon", meta: "DONE · 33m" },
+        { state: "done",    task: "Implement Unit P30 (Partitioned LRU)", agent: "gemini-4-neon", meta: "DONE · 39m" },
+        { state: "done",    task: "Inkling-2-Mini Performance Feasibility", agent: "gemini-4-carbon", meta: "DONE · 7m" }
+      ],
+      prs: [
+        { num: "#70", state: "MERGED", title: "runtime: parallelize range-level fused pread+SHA256 (P29)", branch: "t3/fast-parallel-range-load" },
+        { num: "#69", state: "MERGED", title: "docs: record Waves 2-6 perf PRs (#59-#68) & VM131", branch: "docs/status-next-all17" },
+        { num: "#68", state: "MERGED", title: "perf(ple): parallel PLE+embed staging pool (P26)", branch: "t3/fast-ple-stage-pool" },
+        { num: "#67", state: "MERGED", title: "perf(qsa): deep-context SM80 FlashAttention-2 decode (P19)", branch: "t3/qsa-decode-cuda" },
+        { num: "#65", state: "MERGED", title: "perf(qsa): BF16 Tensor-Core tiled QSA scorer (P25)", branch: "t3/qsa-cuda-scorer" }
+      ]
+    },
+    {
+      code: "R6",
+      name: "R6V2Fix",
+      repo: "SeriousRising/R6V2Fix",
+      leadThread: "Continue UE5 Port and Co-op Merge",
+      leadAgent: "claude-fable-5-2",
+      status: "waiting",
+      activeWork: "Lighting A fix 7 phase 2b + co-op reviewer batch",
+      prBadge: null,
+      prSummary: "local worktree · 3 awaited tasks",
+      updatedAgo: "3m ago",
+      subagents: [
+        { state: "waiting", task: "Lighting A fix 7 phase 2b: collision, spawn, tests", agent: "claude-opus-5-5", meta: "WAIT · bench" },
+        { state: "waiting", task: "Animation reviewer B: corsair batch summary", agent: "bg-cmd", meta: "AWAITED" },
+        { state: "waiting", task: "Co-op reviewer B: local batch results", agent: "bg-cmd", meta: "AWAITED" },
+        { state: "done",    task: "Review A: locomotion phase 2 (table/tests)", agent: "gemini-4-neon", meta: "DONE · 13m" },
+        { state: "done",    task: "Review A: co-op P8 steps 4+5 fix 2", agent: "gemini-4-neon", meta: "DONE · 21m" }
+      ],
+      prs: [
+        { num: "WT", state: "LOCAL", title: "No GitHub PR linked yet — active UE5 port & co-op branch", branch: "ue5-coop-merge" }
+      ]
+    }
+  ],
+  demo: [
+    {
+      code: "S8",
+      name: "SM80InferrenceEngine",
+      repo: "SeriousRising/SM80InferrenceEngine",
+      leadThread: "Overnight Perf — Wave 2 (P9–P12) & Wave 3+",
+      leadAgent: "gemini-4-neon",
+      status: "running",
+      activeWork: "Unit P31: standalone --router-fused-align",
+      prBadge: "#71",
+      prSummary: "CI running · 12 merged",
+      updatedAgo: "now",
+      subagents: [
+        { state: "running", task: "Review Unit P31 (--router-fused-align, R1)", agent: "gemini-4-neon", meta: "RUN · 1m" },
+        { state: "done",    task: "Implement Unit P31 (--router-fused-align)", agent: "gemini-4-neon", meta: "DONE · 2m" },
+        { state: "done",    task: "Review Unit P30 (Graphed MTP Drafter)", agent: "gemini-4-neon", meta: "DONE · 33m" },
+        { state: "done",    task: "Inkling-2-Mini Performance Feasibility", agent: "gemini-4-carbon", meta: "DONE · 7m" }
+      ],
+      prs: [
+        { num: "#71", state: "OPEN",   title: "perf(router): standalone --router-fused-align (Unit P31)", branch: "t3/router-fused-align" },
+        { num: "#70", state: "MERGED", title: "runtime: parallelize range-level fused pread+SHA256 (P29)", branch: "t3/fast-parallel-range-load" },
+        { num: "#69", state: "MERGED", title: "docs: record Waves 2-6 perf PRs (#59-#68) & VM131", branch: "docs/status-next-all17" },
+        { num: "#68", state: "MERGED", title: "perf(ple): parallel PLE+embed staging pool (P26)", branch: "t3/fast-ple-stage-pool" }
+      ]
+    },
+    {
+      code: "R6",
+      name: "R6V2Fix",
+      repo: "SeriousRising/R6V2Fix",
+      leadThread: "Continue UE5 Port and Co-op Merge",
+      leadAgent: "claude-fable-5-2",
+      status: "waiting",
+      activeWork: "Lighting A fix 7 phase 2b + co-op reviewer batch",
+      prBadge: "#42",
+      prSummary: "Draft · 3 awaited tasks",
+      updatedAgo: "3m ago",
+      subagents: [
+        { state: "waiting", task: "Lighting A fix 7 phase 2b: collision, spawn, tests", agent: "claude-opus-5-5", meta: "WAIT · bench" },
+        { state: "waiting", task: "Animation reviewer B: corsair batch summary", agent: "bg-cmd", meta: "AWAITED" },
+        { state: "waiting", task: "Co-op reviewer B: local batch results", agent: "bg-cmd", meta: "AWAITED" },
+        { state: "done",    task: "Review A: locomotion phase 2 (table/tests)", agent: "gemini-4-neon", meta: "DONE · 13m" }
+      ],
+      prs: [
+        { num: "#42", state: "OPEN",   title: "feat(coop): UE5 port lighting fix 7 + co-op round rules", branch: "t3/ue5-coop-merge" },
+        { num: "#41", state: "MERGED", title: "fix(weapons): first-person fire animation sync round 3", branch: "t3/fp-fire-sync" }
+      ]
+    },
+    {
+      code: "KT",
+      name: "kindle-t3-board",
+      repo: "local/kindle-t3-board",
+      leadThread: "EPDC Partial-Refresh Driver & Host Bridge",
+      leadAgent: "gemini-4-neon",
+      status: "running",
+      activeWork: "Cross-compile ARMv7 fb0 + evdev touch loop",
+      prBadge: "#1",
+      prSummary: "Open · 2 subagents",
+      updatedAgo: "now",
+      subagents: [
+        { state: "running", task: "Build T3 host bridge JSON API (:7373)", agent: "gemini-4-neon", meta: "RUN · 4m" },
+        { state: "running", task: "Implement i.MX50 EPDC dirty-rect ioctl", agent: "gpt-6.2-sol", meta: "RUN · 2m" }
+      ],
+      prs: [
+        { num: "#1", state: "OPEN", title: "feat: initial D01200 framebuffer client + T3 bridge", branch: "feat/epdc-kiosk" }
+      ]
+    },
+    {
+      code: "CD",
+      name: "cdtracker",
+      repo: "SeriousRising/cdtracker",
+      leadThread: "Rate-Alert Scheduler & Yield Chart",
+      leadAgent: "gpt-6.2-sol",
+      status: "running",
+      activeWork: "Add maturity rollover alerts + CSV export",
+      prBadge: "#14",
+      prSummary: "Checks green · 1 subagent",
+      updatedAgo: "1m ago",
+      subagents: [
+        { state: "running", task: "Write unit tests for APY compounding edge cases", agent: "gpt-6.1-terra", meta: "RUN · 1m" },
+        { state: "done",    task: "Schema migration for rollover notifications", agent: "gpt-6.2-sol", meta: "DONE · 8m" }
+      ],
+      prs: [
+        { num: "#14", state: "OPEN",   title: "feat: maturity rollover alerts and CSV export", branch: "feat/rollover-alerts" },
+        { num: "#13", state: "MERGED", title: "fix: normalize bank rate scraper timestamps", branch: "fix/scraper-tz" }
+      ]
+    }
+  ]
+};
+
+let currentDataset = "live";
+let currentRefreshMode = "du";
+let selectedCode = null; // null = Overview, string = Project code
+let detailTab = "tasks"; // "tasks" | "prs"
+
+function triggerFlash(forceFull) {
+  const el = document.getElementById("eink-flash");
+  el.classList.remove("anim-gc16", "anim-du");
+  void el.offsetWidth;
+  const cls = (forceFull || currentRefreshMode === "gc16") ? "anim-gc16" : "anim-du";
+  el.classList.add(cls);
+}
+
+function setDataset(name) {
+  currentDataset = name;
+  document.getElementById("btn-live").classList.toggle("active", name === "live");
+  document.getElementById("btn-demo").classList.toggle("active", name === "demo");
+  if (selectedCode && !DATASETS[name].some(p => p.code === selectedCode)) {
+    selectedCode = null;
+  }
+  triggerFlash(false);
+  render();
+}
+
+function setRefreshMode(mode) {
+  currentRefreshMode = mode;
+  document.getElementById("btn-du").classList.toggle("active", mode === "du");
+  document.getElementById("btn-gc16").classList.toggle("active", mode === "gc16");
+  triggerFlash(mode === "gc16");
+}
+
+function openProject(code) {
+  selectedCode = code;
+  detailTab = "tasks";
+  triggerFlash(false);
+  render();
+}
+
+function goHome() {
+  selectedCode = null;
+  triggerFlash(false);
+  render();
+}
+
+function setDetailTab(tab) {
+  detailTab = tab;
+  triggerFlash(false);
+  render();
+}
+
+function esc(s) {
+  return String(s)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+function renderOverview(projects) {
+  const runningCount = projects.filter(p => p.status === "running").length;
+  const waitingCount = projects.filter(p => p.status === "waiting").length;
+  const activeSubs = projects.reduce((acc, p) =>
+    acc + p.subagents.filter(s => s.state === "running" || s.state === "waiting").length, 0);
+  const openPrs = projects.reduce((acc, p) =>
+    acc + p.prs.filter(pr => pr.state === "OPEN").length, 0);
+
+  const rowsHtml = projects.map(p => {
+    const liveSubCount = p.subagents.filter(s => s.state === "running" || s.state === "waiting").length;
+    const dotClass = p.status === "running" ? "solid" : "half";
+    const statusText = p.status === "running" ? "RUNNING" : "WAITING";
+    const prHtml = p.prBadge ? `<span class="ek-pr-tag">${esc(p.prBadge)}</span>` : "";
+    return `
+      <div class="ek-row" onclick="openProject('${esc(p.code)}')" role="button" tabindex="0">
+        <div class="ek-badge">${esc(p.code)}</div>
+        <div class="ek-col-proj">
+          <div class="ek-proj-name">${esc(p.name)}</div>
+          <div class="ek-sub">lead: ${esc(p.leadAgent)}</div>
+        </div>
+        <div class="ek-col-work">
+          <div class="ek-work-title">${prHtml}${esc(p.activeWork)}</div>
+          <div class="ek-pr-meta">${esc(p.leadThread)} · ${esc(p.prSummary)}</div>
+        </div>
+        <div class="ek-col-right">
+          <div class="ek-status-pill"><span class="ek-dot ${dotClass}"></span>${statusText}</div>
+          <div class="ek-right-sub">${liveSubCount} SUBAGENT${liveSubCount === 1 ? "" : "S"} ›</div>
+        </div>
+      </div>
+    `;
+  }).join("");
+
+  const lastProject = projects[0];
+  const lastActive = lastProject.subagents[0];
+
+  return `
+    <div class="ek-header">
+      <div class="ek-header-left">
+        <span>T3 CODE BOARD</span>
+        <span style="color:#55554e;font-weight:500;">· PROJECTS ONLY</span>
+      </div>
+      <div class="ek-header-right">
+        <span>FRI 20 NOV 19:10</span>
+        <span>BAT 84%</span>
+      </div>
+    </div>
+
+    <div class="ek-hero">
+      <div class="ek-hero-left">
+        <div class="ek-big-num">${projects.length}</div>
+        <div class="ek-big-copy">
+          <div class="ek-big-title">active project thread${projects.length === 1 ? "" : "s"}</div>
+          <div class="ek-big-sub">${activeSubs} live subagents · excluding scratch threads</div>
+        </div>
+      </div>
+      <div class="ek-hero-stats">
+        <div>RUNNING ${runningCount} · WAITING ${waitingCount}</div>
+        <div>OPEN PRS ${openPrs} · PROJECTS ${projects.length}</div>
+        <div class="ek-hero-hint">TAP ANY ROW TO INSPECT PRS &amp; SUBAGENTS</div>
+      </div>
+    </div>
+
+    <div class="ek-list">
+      ${rowsHtml}
+    </div>
+
+    <div class="ek-footer">
+      <div>LAST: ${esc(lastProject.code)} · ${esc(lastActive.task)}</div>
+      <div class="ek-footer-pills">
+        <span>${currentRefreshMode === "du" ? "DU PARTIAL" : "GC16 FULL"} · 60S</span>
+        <button class="ek-refresh-btn" onclick="triggerFlash(true)" title="Full GC16 e-ink refresh">↻ CLEAR</button>
+      </div>
+    </div>
+  `;
+}
+
+function renderDetail(projects, p) {
+  const liveSubs = p.subagents.filter(s => s.state === "running" || s.state === "waiting").length;
+  const openPrCount = p.prs.filter(pr => pr.state === "OPEN").length;
+
+  let bodyHtml = "";
+  if (detailTab === "tasks") {
+    const subRows = p.subagents.map(s => {
+      const glyph = s.state === "running" ? "●" : (s.state === "waiting" ? "◐" : "✓");
+      return `
+        <div class="ek-sub-row">
+          <div style="font-size:14px;text-align:center;">${glyph}</div>
+          <div class="ek-sub-task">${esc(s.task)}</div>
+          <div class="ek-sub-model">${esc(s.agent)}</div>
+          <div class="ek-sub-state">${esc(s.meta)}</div>
+        </div>
+      `;
+    }).join("");
+
+    bodyHtml = `
+      <div class="ek-section-hdr">
+        <span>SUBAGENTS &amp; TASKS (${liveSubs} LIVE / ${p.subagents.length} RECENT)</span>
+        <span>AGENT / STATE</span>
+      </div>
+      <div class="ek-sub-list">${subRows}</div>
+    `;
+  } else {
+    const prRows = p.prs.map(pr => {
+      const openCls = pr.state === "OPEN" ? "open" : "";
+      return `
+        <div class="ek-pr-row">
+          <div class="ek-pr-num">${esc(pr.num)}</div>
+          <div class="ek-sub-task">${esc(pr.title)}</div>
+          <div class="ek-sub-model">${esc(pr.branch)}</div>
+          <div><span class="ek-pr-state-pill ${openCls}">${esc(pr.state)}</span></div>
+        </div>
+      `;
+    }).join("");
+
+    bodyHtml = `
+      <div class="ek-section-hdr">
+        <span>LINKED PULL REQUESTS (${openPrCount} OPEN / ${p.prs.length} SHOWN)</span>
+        <span>BRANCH / STATE</span>
+      </div>
+      <div class="ek-sub-list">${prRows}</div>
+    `;
+  }
+
+  const switcherHtml = projects.map(item => `
+    <button class="ek-mini-pill ${item.code === p.code ? "active" : ""}" onclick="openProject('${esc(item.code)}')">${esc(item.code)}</button>
+  `).join("");
+
+  return `
+    <div class="ek-header">
+      <div class="ek-header-left">
+        <button class="ek-back-btn" onclick="goHome()">← ALL</button>
+        <span>PROJECT INSPECTOR</span>
+      </div>
+      <div class="ek-header-right">
+        <span>FRI 20 NOV 19:10</span>
+        <span>BAT 84%</span>
+      </div>
+    </div>
+
+    <div class="ek-detail-banner">
+      <div class="ek-detail-title-wrap">
+        <div class="ek-badge">${esc(p.code)}</div>
+        <div>
+          <div class="ek-detail-name">${esc(p.name)}</div>
+          <div class="ek-detail-repo">${esc(p.repo)} · ${esc(p.prSummary)}</div>
+        </div>
+      </div>
+      <div class="ek-tabs">
+        <button class="ek-tab ${detailTab === "tasks" ? "active" : ""}" onclick="setDetailTab('tasks')">SUBAGENTS (${liveSubs})</button>
+        <button class="ek-tab ${detailTab === "prs" ? "active" : ""}" onclick="setDetailTab('prs')">PRS (${p.prs.length})</button>
+      </div>
+    </div>
+
+    <div class="ek-lead-card">
+      <div style="min-width:0;">
+        <div class="ek-lead-label">LEAD THREAD · ${p.status.toUpperCase()}</div>
+        <div class="ek-lead-title">${p.prBadge ? `<span class="ek-pr-tag">${esc(p.prBadge)}</span>` : ""}${esc(p.leadThread)}</div>
+      </div>
+      <div class="ek-lead-agent">
+        <div class="ek-lead-label">LEAD AGENT</div>
+        <div style="font-size:13.5px;font-weight:700;margin-top:2px;">${esc(p.leadAgent)}</div>
+      </div>
+    </div>
+
+    ${bodyHtml}
+
+    <div class="ek-footer">
+      <div class="ek-footer-pills">
+        <span>JUMP:</span>
+        ${switcherHtml}
+      </div>
+      <div class="ek-footer-pills">
+        <span>UPDATED ${esc(p.updatedAgo.toUpperCase())}</span>
+        <button class="ek-refresh-btn" onclick="triggerFlash(true)">↻ CLEAR</button>
+      </div>
+    </div>
+  `;
+}
+
+function render() {
+  const projects = DATASETS[currentDataset];
+  const root = document.getElementById("eink-root");
+  if (selectedCode) {
+    const proj = projects.find(p => p.code === selectedCode) || projects[0];
+    root.innerHTML = renderDetail(projects, proj);
+  } else {
+    root.innerHTML = renderOverview(projects);
+  }
+}
+
+function scaleCanvas() {
+  const recess = document.getElementById("screen-recess");
+  const canvas = document.getElementById("eink-canvas");
+  if (!recess || !canvas) return;
+  const scale = recess.clientWidth / 800;
+  canvas.style.transform = `scale(${scale})`;
+}
+
+window.addEventListener("resize", scaleCanvas);
+render();
+scaleCanvas();
+</script>
+</body>
+</html>

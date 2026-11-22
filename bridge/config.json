@@ -1,0 +1,22 @@
+{
+  "host": "0.0.0.0",
+  "port": 7373,
+  "t3Database": "~/.t3/userdata/statev2.sqlite",
+  "scratchDir": "~/.t3/scratch",
+  "refreshIntervalSeconds": 60,
+  "includeRecentlyCompletedMinutes": 15,
+  "projectCodes": {
+    "R6V2Fix": "R6",
+    "R6V2UE5": "RU",
+    "SM80InferrenceEngine": "S8",
+    "kindle-t3-board": "KT",
+    "cdtracker": "CD",
+    "FishAndFeast": "FF",
+    "BeefPriceTracker": "BP",
+    "NotionREA": "NR",
+    "DAPRework": "DA",
+    "BotBot": "BB",
+    "life-dashboard": "LD",
+    "llm-usage": "LU"
+  }
+}
